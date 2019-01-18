@@ -1,0 +1,21 @@
+---
+# tasks file for usage_check
+
+- name:	run show internal flash      
+  nxos_command:
+    commands: show system internal flash | in I filesystem|dme_log 
+    register: findusage
+
+- debug: msg="{{findusage.stdout_lines}}"
+
+- set_fact: pattern="(\b[80-100]%)"
+ 
+- name:	Find usage from 80 to 100   
+  set_fact: MATCH="{{findusage.stdout[0] | regex_search(pattern) }}"
+ 
+- debug: msg="{{MATCH}}"
+
+- name: sh hostname when match is equal to or greater than 80
+  nxos_command
+    commands: sh hostname
+  when: 

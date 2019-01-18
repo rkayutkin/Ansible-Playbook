@@ -1,0 +1,64 @@
+---
+# tasks file for FIX_MCAST
+
+- name: Parse group_list
+  nxos_command:
+    commands: sh run | include 239.106.0.0/16
+  register: findmcastone
+
+- debug: msg="{{findmcastone.stdout_lines}}"
+
+- set_fact: patternone="ip pim rp-address 10.77.255.30 group-list 239.106.0.0/16"
+
+- name: Find groupl_list
+  set_fact: MATCHONE="{{findmcastone.stdout[0] | regex_search(patternone)}}"
+
+- debug: msg="{{MATCHONE}}"
+
+- name: Change the group_list configuration to baseline route_map when MATCHONE is true
+  nxos_config:
+    lines:
+      - match ip multicast group 239.106.255.0/24
+    parents: route-map MCAST_REGIONAL_RDU1 permit 10
+  when: MATCHONE == patternone
+
+- name: Add the RP configuration
+  nxos_config:
+    commands: ip pim rp-address 10.77.255.30 route-map MCAST_REGIONAL_RDU1
+  when: MATCHONE == patternone
+
+- name: Remove the group_list configuration when MATCHONE is true
+  nxos_config:
+    commands: no ip pim rp-address 10.77.255.30 group-list 239.106.0.0/16
+  when: MATCHONE == patternone
+
+- name: Parse route_map if MATCHONE is false
+  nxos_command:
+    commands: sh route-map MCAST_REGIONAL_RDU1 | include MCAST_REGIONAL_RDU1|239.106.0.0/16
+  register: findmcasttwo
+  when: MATCHONE != patternone
+  
+- debug: msg="{{findmcasttwo.stdout_lines}}"
+  when: MATCHONE != patternone
+  
+- set_fact: patterntwo="MCAST_REGIONAL_RDU1"
+  when: MATCHONE != patternone
+  
+- name: Find route_map
+  set_fact: MATCHTWO="{{findmcasttwo.stdout[0] | regex_search(patterntwo)}}"
+  when: MATCHONE != patternone
+  
+- debug: msg="{{MATCHTWO}}"
+  when: MATCHONE != patternone
+  
+- set_fact: WRONGCONFIG="{{'group 239.106.0.0/16'}}"
+  when: MATCHONE != patternone
+  
+- name: Change the route-map if it has the wrong configuration
+  nxos_config:
+    lines:
+      - match ip multicast group 239.106.255.0/24
+    parents: route-map MCAST_REGIONAL_RDU1 permit 10
+  when: MATCHTWO == WRONGCONFIG
+  when: MATCHONE != patternone
+...

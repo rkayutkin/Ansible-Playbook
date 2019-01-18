@@ -1,0 +1,78 @@
+---
+# tasks file for FIX_MCAST_TWO
+
+- name: Parse route-map
+  nxos_command:
+    commands: "show route-map | json-pretty | egrep 'name|239.120' | awk '/239.120/{ print line } { line = $2 }'"
+  register: findrp
+
+- debug: msg="{{ findrp.stdout[0]|replace(',', '')|replace('\"','') }}"
+
+- set_fact: NAME_RP="{{ findrp.stdout[0]|replace(',', '')|replace('\"','') }}"
+
+- debug: var=NAME_RP
+
+- name: show route-map
+  nxos_command:
+    commands: "show route-map {{NAME_RP}} | json-pretty | grep seq | awk '{ print $2 }' | last 1"
+  register: findsq
+
+- set_fact:
+    oldseq: "{{findsq.stdout[0]|replace(',','')|replace('\"','') | int}}"
+    newseq: "{{findsq.stdout[0]|replace(',','')|replace('\"','') | int + 10}}"
+
+- debug: var=oldseq
+- debug: var=newseq
+
+- name: Add 239.106.0.0/15 as the next sequence to the NAME_RP found
+  nxos_config:
+    lines:
+      - match ip multicast group 239.106.0.0/15
+    parents: route-map {{NAME_RP}} permit {{newseq}}
+  when: NAME_RP != ""
+
+- name: Parse group_list if MATCHONE is false
+  nxos_command:
+    commands: sh run | include 239.120.0.0/16
+  register: findgl
+
+- debug: msg="{{findgl.stdout_lines}}"
+
+- set_fact: patterntwo="ip pim rp-address 10.45.255.10 group-list 239.120.0.0/16"
+
+- name: Find group_list
+  set_fact: MATCHTWO="{{findgl.stdout[0] | regex_search(patterntwo)}}"
+
+- debug: msg="{{MATCHTWO}}"
+  when: MATCHTWO == patterntwo
+  
+- name: Create MCAST_REGIONAL_OMA1 sequence 10
+  nxos_config:
+    lines:
+      - match ip multicast group 239.120.0.0/16
+    parents: route-map MCAST_REGIONAL_OMA1 permit 10
+  when: MATCHTWO == patterntwo
+  
+- name: Create MCAST_REGIONAL_OMA1 sequence 20
+  nxos_config:
+    lines:
+      - match ip multicast group 239.106.0.0/15
+    parents: route-map MCAST_REGIONAL_OMA1 permit 20
+  when: MATCHTWO == patterntwo
+  
+- name: Add the RP configuration
+  nxos_config:
+    commands: ip pim rp-address 10.45.255.10 route-map MCAST_REGIONAL_OMA1
+  when: MATCHTWO == patterntwo
+        
+#- name: Remove the wrong configuration
+#  nxos_config:
+#    commands: no ip pim rp-address 10.45.255.10 group-list 239.120.0.0/16
+#  when: MATCHTWO == patterntwo
+
+### VALIDATION ###
+- name: SHOW ROUTE_MAP VALIDATION
+  nxos_command:
+    commands: "show route-map {{NAME_RP}}"
+  tags: checkrp
+...

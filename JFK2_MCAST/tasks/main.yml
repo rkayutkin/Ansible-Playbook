@@ -1,0 +1,39 @@
+---
+# tasks file for JFK2_MCAST
+
+- name: run show to see if MCAST group exist
+  nxos_command:
+    commands: sh run | include MCAST_REGIONAL_JFK2
+  register: findmcast
+
+- debug: msg="{{findmcast.stdout_lines}}"
+
+- set_fact: pattern="ip pim rp-address 10.82.255.30 route-map MCAST_REGIONAL_JFK2"
+
+- name: Find JFK2 Multicast
+  set_fact: MATCH="{{findmcast.stdout[0] | regex_search(pattern)}}"
+
+- debug: msg="{{MATCH}}"
+
+- set_fact: NOCONFIG="{{''}}"
+
+- name: Create the route-map for JFK2 if its missing
+  nxos_config:
+    lines:
+      - match ip multicast group 239.225.0.0/16
+    parents: route-map MCAST_REGIONAL_JFK2
+  when: MATCH == NOCONFIG
+
+- name: Configure the RP
+  nxos_config:
+    commands: ip pim rp-address 10.82.255.30 route-map MCAST_REGIONAL_JFK2
+  when: MATCH == NOCONFIG
+  
+- name: print hostname when the RP and route_map exists
+  nxos_command:
+    commands: sh hostname
+  when: MATCH != NOCONFIG
+  register: skipped
+
+- debug: msg="{{skipped.stdout_lines}}"
+  when: MATCH != NOCONFIG

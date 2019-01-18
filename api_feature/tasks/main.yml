@@ -1,0 +1,19 @@
+---
+# Gather OS version and match only NX-OS
+  - name: GATHER OS via SNMP
+    snmp_device_version:
+      host: "{{ inventory_hostname }}"
+      version: 2c
+      community: "{{ SNMP_RO }}"
+    delegate_to: local
+    register: output
+
+  - set_fact: OSFOUND="{{output.ansible_facts.ansible_device_os}}"
+
+  - debug: msg="{{OSFOUND}}"
+
+  - name: CONFIG NXOS
+    include_tasks: nxos.yml
+    when: OSFOUND == 'nxos'
+
+

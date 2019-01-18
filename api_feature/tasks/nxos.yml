@@ -1,0 +1,27 @@
+---
+
+# task file for finding the missing api feaure on nxos and applying it
+  - name: Gather API Feature info for NXOS
+    nxos_command:
+      commands:
+        - sh run | include nxapi
+    register: findapi
+
+  - debug: msg="{{findapi.stdout_lines}}"
+  
+  - set_fact: apipat="(feature nxapi)"
+
+  - set_fact: NXAPI="{{findapi.stdout[0] | regex_search(apipat)}}"
+
+  - name: Apply API feature if missing
+    nxos_config:
+      lines:
+        - feature nxapi
+    when: NXAPI != "{{ 'feature nxapi' }}"  
+ 
+  - name: Return "API enabled" if feature is enabled
+    debug: msg="API enabled"           
+    when: NXAPI == "{{ 'feature nxapi' }}"
+
+
+
