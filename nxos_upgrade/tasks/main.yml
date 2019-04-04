@@ -1,0 +1,90 @@
+---
+# NX_OS Upgrade switch
+
+- name: Gather Facts
+  nxos_facts:
+    gather_subset: all
+  register: facts
+
+- name: Gather Memory Free
+  set_fact: memfree="{{ facts.ansible_facts['ansible_net_memfree_mb'] }}"
+
+- name: Gather Current Version
+  set_fact: currentver="{{ facts.ansible_facts['ansible_net_image'] }}"
+
+- debug: var=memfree
+
+- debug: var=currentver
+
+- name: Verify Image not in bootflash
+  nxos_command:
+    commands: dir | awk '{print$6}' | include nxos.7.0.3.I7.6.bin
+  register: bootflash
+
+- debug: msg="{{bootflash.stdout_lines}}"
+
+- set_fact: newver="nxos.7.0.3.I7.6.bin"
+
+- name: Copy Image if not in bootflash
+  ntc_file_copy: cisco_nxos_nxapi
+    local_file: image/nxos.7.0.3.I7.6.bin
+  when: bootflash != newver
+  when: memfree > 1012
+
+- name: Verify Checksum
+  nxos_command:
+    commands: show file bootflash:nxos.7.0.3.I7.6.bin md5sum
+  registr: checksum
+
+- debug: msg="{{checksum.stdout_lines}}"
+
+- set_fact: originalchecksum='aea740774c1ef22585ac40f1134d3ed6'
+
+- name: Verify Impact
+  nxos_command:
+    commands: show install all impact nxos bootflash:nxos.7.0.3.I7.6.bin
+  registr: impact
+
+- name: Backup Configuration
+  ntc_save_config:
+    platform: cisco_nxos_nxapi
+    local_file: backup/{{ inventory_hostname }}.cfg
+  when: checksum = originalchecksum
+
+- name: Set Boot Image
+  nxos_config:
+    lines:
+      – no boot system
+      – boot system flash bootflash:nxos.7.0.3.I7.6.bin
+  when: currentver != newver
+
+- name: RELOADING THE DEVICE
+  ntc_reboot:
+    platform: cisco_nxos_nxapi
+    confirm: true
+    timer: 2
+  when: currentver != newver
+
+- name: VERIFYING CONNECTIVITY
+  wait_for:
+       port: 22
+       timeout: 300
+- nxos_command:
+       commands: ping 10.65.254.1
+       wait_for:
+       – result[0] contains “!!!”
+  register: result
+  failed_when: “not ‘!!!’ in result.stdout[0]”
+
+- name: Gather Facts
+  nxos_facts:
+    gather_subset: all
+  register: facts2
+
+- name: Gather New Current Version
+  set_fact: newcurrentver="{{ facts.ansible_facts['ansible_net_image'] }}"
+
+- name: Remove old Image
+  nxos_config:
+    commands: delete bootflash:///{{ currentver }}
+  when: newcurrentver = newver
