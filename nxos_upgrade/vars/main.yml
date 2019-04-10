@@ -1,2 +1,4 @@
 ---
 # vars file for nxos_upgrade
+
+newver: nxos.7.0.3.I7.6.bin

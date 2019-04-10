@@ -1,0 +1,8 @@
+---
+# vars file for nxos_upload
+
+newver: nxos.7.0.3.I7.6.bin
+
+features:
+  - scp-server
+  - nxapi

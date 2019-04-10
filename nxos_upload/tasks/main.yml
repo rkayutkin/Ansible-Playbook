@@ -1,0 +1,64 @@
+---
+# tasks file for nxos_upload
+
+- name: Gather Facts
+  nxos_facts:
+    gather_subset: all
+  register: facts
+
+- name: Gather Memory Free
+  set_fact: memfree="{{ facts.ansible_facts['ansible_net_memfree_mb'] }}"
+
+- name: Gather Current Version
+  set_fact: currentver="{{ facts.ansible_facts['ansible_net_image'] }}"
+
+- debug: var=memfree
+
+- debug: var=currentver
+
+- set_fact: newver='nxos.7.0.3.I7.6.bin'
+
+- name: Verify Image not in bootflash
+  nxos_command:
+    commands: dir | awk '{print$6}' | include nxos.7.0.3.I7.6.bin
+  register: bootflash
+
+- debug: msg="{{bootflash.stdout_lines}}"
+
+- name: "ENABLING: Lists {scp-serve, nxapi }"
+  nxos_feature:
+    feature: "{{ item }}"
+    state: enabled
+  with_items: "{{ features }}"
+
+- nxos_file_copy:
+    local_file: "{{fullpath}}files/nxos.7.0.3.I7.6.bin"
+    remote_file: "nxos.7.0.3.I7.6.bin"
+  when:
+    - bootflash != newver
+    - memfree > 1012
+
+- name: Verify Checksum
+  nxos_command:
+    commands: show file bootflash:nxos.7.0.3.I7.6.bin md5sum
+  register: checksum
+
+- debug: msg="{{checksum.stdout_lines}}"
+
+- set_fact: originalchecksum='aea740774c1ef22585ac40f1134d3ed6'
+
+- name: Verify Impact
+  nxos_command:
+    commands: show install all impact nxos bootflash:nxos.7.0.3.I7.6.bin
+  register: impact
+
+- debug: msg="{{impact.stdout_lines}}"
+
+- name: Backup Configuration
+  ntc_save_config:
+    platform: cisco_nxos_nxapi
+    host: "{{ inventory_hostname }}"
+    local_file: backup/{{ inventory_hostname }}.cfg
+    username: "{{ user }}"
+    password: "{{ pass }}"
+  when: checksum == originalchecksum
