@@ -43,22 +43,17 @@
     commands: show file bootflash:nxos.7.0.3.I7.6.bin md5sum
   register: checksum
 
-- debug: msg="{{checksum.stdout_lines}}"
+- set_fact: updatedchecksum="{{checksum.stdout[0]}}"
 
-- set_fact: originalchecksum='aea740774c1ef22585ac40f1134d3ed6'
+- debug: var=updatedchecksum
 
-- name: Verify Impact
-  nxos_command:
-    commands: show install all impact nxos bootflash:nxos.7.0.3.I7.6.bin
-  register: impact
-
-- debug: msg="{{impact.stdout_lines}}"
+- debug: var=originalchecksum
 
 - name: Backup Configuration
   ntc_save_config:
     platform: cisco_nxos_nxapi
     host: "{{ inventory_hostname }}"
-    local_file: backup/{{ inventory_hostname }}.cfg
+    local_file: "{{fullpath}}backup/{{ inventory_hostname }}.cfg"
     username: "{{ user }}"
     password: "{{ pass }}"
-  when: checksum == originalchecksum
+  when: originalchecksum == updatedchecksum

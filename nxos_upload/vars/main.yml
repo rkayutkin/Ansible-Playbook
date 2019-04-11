@@ -2,6 +2,7 @@
 # vars file for nxos_upload
 
 newver: nxos.7.0.3.I7.6.bin
+originalchecksum: aea740774c1ef22585ac40f1134d3ed6
 
 features:
   - scp-server
