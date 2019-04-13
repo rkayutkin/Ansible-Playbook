@@ -16,11 +16,9 @@
 
 - debug: var=currentver
 
-- set_fact: newver='nxos.7.0.3.I7.6.bin'
-
 - name: Verify Image not in bootflash
   nxos_command:
-    commands: dir | awk '{print$6}' | include nxos.7.0.3.I7.6.bin
+    commands: dir | awk '{print$6}' | include {{newver}}
   register: bootflash
 
 - debug: msg="{{bootflash.stdout_lines}}"
@@ -32,15 +30,15 @@
   with_items: "{{ features }}"
 
 - nxos_file_copy:
-    local_file: "{{fullpath}}files/nxos.7.0.3.I7.6.bin"
-    remote_file: "nxos.7.0.3.I7.6.bin"
+    local_file: "{{fullpath}}files/{{newver}}"
+    remote_file: "{{newver}}"
   when:
     - bootflash != newver
     - memfree > 1012
 
 - name: Verify Checksum
   nxos_command:
-    commands: show file bootflash:nxos.7.0.3.I7.6.bin md5sum
+    commands: show file bootflash:{{newver}} md5sum
   register: checksum
 
 - set_fact: updatedchecksum="{{checksum.stdout[0]}}"

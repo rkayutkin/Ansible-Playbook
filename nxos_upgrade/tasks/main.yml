@@ -16,13 +16,6 @@
       commands: install all nxos bootflash:nxos.7.0.3.I7.6.bin
   when: currentver != newver
 
-- name: Reload Device
-  ntc_reboot:
-    platform: cisco_nxos_nxapi
-    confirm: true
-    timer: 2
-  when: currentver != newver
-
 - name: Verify Connectivity
   wait_for:
        port: 22
@@ -62,4 +55,3 @@
        – result[0] contains “!!!”
   register: result
   failed_when: “not ‘!!!’ in result.stdout[0]”
-#
