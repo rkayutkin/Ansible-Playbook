@@ -1,5 +1,5 @@
 ---
-# tasks file for OMA1_MCAST
+# tasks file for XXXX_MCAST
 
 - name: Parse group_list
   nxos_command:
@@ -31,11 +31,11 @@
 - debug: msg="{{MATCHTWO}}"
   when: MATCHTWO == patterntwo
 
-- name: Create MCAST_REGIONAL_OMA1 sequence 10
+- name: Create MCAST_REGIONAL_XXXX sequence 10
   nxos_config:
     lines:
       - match ip multicast group 239.120.0.0/16
-    parents: route-map MCAST_REGIONAL_OMA1 permit 10
+    parents: route-map MCAST_REGIONAL_XXXX permit 10
   when: MATCHONE == patternone
 
 - name: Remove the wrong configuration for gl
@@ -47,17 +47,17 @@
   nxos_config:
     lines:
       - match ip multicast group 239.106.0.0/15
-    parents: route-map MCAST_REGIONAL_OMA1 permit 20
+    parents: route-map MCAST_REGIONAL_XXXX permit 20
   when: MATCHTWO == patterntwo
 
 - name: Add the RP configuration
   nxos_config:
-    commands: ip pim rp-address 10.45.255.10 route-map MCAST_REGIONAL_OMA1
+    commands: ip pim rp-address 10.45.255.10 route-map MCAST_REGIONAL_XXXX
   when: MATCHTWO == patterntwo
 
 - name: Remove the wrong configuration for rm
   nxos_config:
     commands:
-      - no ip pim rp-address 10.77.255.30 route-map MCAST_REGIONAL_RDU1
-      - no route-map MCAST_REGIONAL_RDU1 permit 10
+      - no ip pim rp-address 10.77.255.30 route-map MCAST_REGIONAL_XXXX
+      - no route-map MCAST_REGIONAL_XXXX permit 10
   when: MATCHTWO == patterntwo
